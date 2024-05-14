@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import bcrypt from "bcrypt";
 import User from "./userModel";
+import { sign } from "jsonwebtoken";
+import { config } from "../config/config";
 
 const rgister = async (req: Request, res: Response, next: NextFunction) => {
   // validation
@@ -13,7 +15,11 @@ const rgister = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
   // DB validation
-
+  const userAllredy = await User.findOne({ email });
+  if (userAllredy) {
+    const error = createHttpError(400, "User already exists");
+    next(error);
+  }
   // store in DB
 
   const hashPassword = await bcrypt.hash(password, 10);
@@ -22,11 +28,14 @@ const rgister = async (req: Request, res: Response, next: NextFunction) => {
     email,
     password: hashPassword,
   });
-  // process
+  // create jWt token
+  const token = sign({ sub: user._id }, config.JWTSECRET as string, {
+    expiresIn: "7d",
+  });
 
   // response
   res.json({
-    message: "Hello World!",
+    AccessToken: token,
   });
 };
 export { rgister };
